@@ -1,0 +1,53 @@
+name: crawl
+
+on:
+  schedule:
+    # Times are UTC. Lagos is UTC+1 with no daylight saving, so these fire at
+    # 06:00, 12:00 and 18:00 Lagos time, weekdays.
+    # GitHub runs scheduled jobs on a shared pool, so expect 5-30 minutes of
+    # drift at peak. Irrelevant for a job board.
+    - cron: '0 5,11,17 * * 1-5'
+  workflow_dispatch:        # adds a "Run workflow" button for manual runs
+
+permissions:
+  contents: write           # needed to commit jobs.json and seen.json back
+
+concurrency:
+  group: crawl
+  cancel-in-progress: false
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Crawl, score and send digest
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          MAIL_TO:   ${{ secrets.MAIL_TO }}
+          BOARD_URL: ${{ vars.BOARD_URL }}
+        run: python -m crawler.main
+
+      - name: Commit updated board and state
+        run: |
+          git config user.name  "departures-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/jobs.json data/seen.json
+          # --quiet exits non-zero when there IS something staged, so the ||
+          # branch is the commit path. No changes means a clean no-op.
+          git diff --staged --quiet || git commit -m "crawl: $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push
