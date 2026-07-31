@@ -6,7 +6,7 @@ ALERT_MIN_SCORE = 70    # only email me jobs at least this eligible
 INCLUDE_SENIOR = False  # False = junior + mid only
 MAX_ALERTS = 25         # cap per digest, so the email stays readable
 KEEP_JOBS = 800         # cap the board served to the frontend
-SEEN_TTL_DAYS = 45      # forget job hashes older than this
+SEEN_TTL_DAYS = 0      # forget job hashes older than this
 
 # ---- ATS company boards ----------------------------------------------------
 # This list is the single biggest lever on board quality. ATS boards surface
